@@ -301,35 +301,44 @@ public static class V2rayConfigUtils
         var streamSettings = new StreamSettings
         {
             network = server.TransferProtocol,
-            security = server.TLSSecureType
+            security = server.TLSSecureType // Initial assignment
         };
 
-        if (server.TLSSecureType != "none")
+        if (server is VLESSServer vlessServer && vlessServer.TLSSecureType == "reality")
         {
+            streamSettings.security = "reality"; // Override security to "reality"
+            if (!string.IsNullOrEmpty(vlessServer.REALITYPublicKey)) // Only proceed if PublicKey is set
+            {
+                streamSettings.realitySettings = new RealitySettings
+                {
+                    serverName = vlessServer.ServerName.ValueOrDefault() ?? vlessServer.Host.SplitOrDefault()?[0],
+                    fingerprint = vlessServer.REALITYFingerprint,
+                    publicKey = vlessServer.REALITYPublicKey,
+                    shortId = vlessServer.REALITYShortId,
+                    spiderX = vlessServer.REALITYSpiderX
+                };
+            }
+            // When security is "reality", tlsSettings and xtlsSettings should be null.
+        }
+        else if (server.TLSSecureType == "tls" || server.TLSSecureType == "xtls") // Process only "tls" or "xtls"
+        {
+            // This is the existing block for tls/xtls
             var tlsSettings = new TlsSettings
             {
                 allowInsecure = Global.Settings.V2RayConfig.AllowInsecure,
                 serverName = server.ServerName.ValueOrDefault() ?? server.Host.SplitOrDefault()?[0]
             };
 
-        if (server is VLESSServer vlessServer && !string.IsNullOrEmpty(vlessServer.REALITYPublicKey))
-        {
-            tlsSettings.fingerprint = vlessServer.REALITYFingerprint;
-            tlsSettings.publicKey = vlessServer.REALITYPublicKey;
-            tlsSettings.shortId = vlessServer.REALITYShortId;
-            tlsSettings.spiderX = vlessServer.REALITYSpiderX;
-        }
-
-            switch (server.TLSSecureType)
+            if (server.TLSSecureType == "tls")
             {
-                case "tls":
-                    streamSettings.tlsSettings = tlsSettings;
-                    break;
-                case "xtls":
-                    streamSettings.xtlsSettings = tlsSettings;
-                    break;
+                streamSettings.tlsSettings = tlsSettings;
+            }
+            else // Must be "xtls"
+            {
+                streamSettings.xtlsSettings = tlsSettings;
             }
         }
+        // The case for "none" TLSSecureType implicitly means no tlsSettings, xtlsSettings, or realitySettings, which is correct.
 
         switch (server.TransferProtocol)
         {
