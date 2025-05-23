@@ -312,6 +312,14 @@ public static class V2rayConfigUtils
                 serverName = server.ServerName.ValueOrDefault() ?? server.Host.SplitOrDefault()?[0]
             };
 
+        if (server is VLESSServer vlessServer && !string.IsNullOrEmpty(vlessServer.REALITYPublicKey))
+        {
+            tlsSettings.fingerprint = vlessServer.REALITYFingerprint;
+            tlsSettings.publicKey = vlessServer.REALITYPublicKey;
+            tlsSettings.shortId = vlessServer.REALITYShortId;
+            tlsSettings.spiderX = vlessServer.REALITYSpiderX;
+        }
+
             switch (server.TLSSecureType)
             {
                 case "tls":

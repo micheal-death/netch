@@ -13,4 +13,6 @@ public class V2rayConfig
     public bool XrayCone { get; set; } = true;
 
     public bool TCPFastOpen { get; set; } = false;
+
+    public string XrayExecutableName { get; set; } = "xray.exe";
 }
