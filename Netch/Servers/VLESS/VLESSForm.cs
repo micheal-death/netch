@@ -41,45 +41,47 @@ internal class VLESSForm : ServerForm
 
         CreateComboBox("TLSSecure", "TLS Secure", VLESSGlobal.TLSSecure, s => server.TLSSecureType = s, server.TLSSecureType);
 
-        CreateComboBox("REALITYFingerprint",
-            "REALITY Fingerprint",
-            new List<string> { "chrome", "firefox", "safari", "ios", "random" },
-            s => server.REALITYFingerprint = s,
-            server.REALITYFingerprint,
-            true);
+        CreateTextBox("REALITYFingerprint", "REALITY Fingerprint", s => true, s => server.REALITYFingerprint = s, server.REALITYFingerprint);
         CreateTextBox("REALITYPublicKey", "REALITY Public Key", s => true, s => server.REALITYPublicKey = s, server.REALITYPublicKey);
         CreateTextBox("REALITYShortId", "REALITY Short ID", s => true, s => server.REALITYShortId = s, server.REALITYShortId);
         CreateTextBox("REALITYSpiderX", "REALITY SpiderX", s => true, s => server.REALITYSpiderX = s, server.REALITYSpiderX);
-    }
 
-    protected override string TypeName { get; } = "VLESS";
+        var tlsSecureComboBox = ConfigurationGroupBox.Controls.Find("TLSSecureComboBox", true).FirstOrDefault() as ComboBox;
+        if (tlsSecureComboBox != null)
+        {
+            tlsSecureComboBox.SelectedIndexChanged += OnTLSSecureChanged;
+            // Initial call to set visibility
+            OnTLSSecureChanged(null, EventArgs.Empty);
+        }
+    }
 
     private void OnTLSSecureChanged(object? sender, EventArgs e)
     {
         var tlsSecureComboBox = ConfigurationGroupBox.Controls.Find("TLSSecureComboBox", true).FirstOrDefault() as ComboBox;
-        if (tlsSecureComboBox == null) return;
+        if (tlsSecureComboBox == null) return; // Should not happen
 
         var selectedSecureType = tlsSecureComboBox.SelectedItem?.ToString() ?? string.Empty;
         bool isReality = selectedSecureType == "reality";
 
-        var realityControls = new[] { "REALITYFingerprintComboBox", "REALITYPublicKeyTextBox", "REALITYShortIdTextBox", "REALITYSpiderXTextBox" };
-        var realityLabels = new[] { "REALITYFingerprintLabel", "REALITYPublicKeyLabel", "REALITYShortIdLabel", "REALITYSpiderXLabel" };
+        var realityFieldBaseNames = new[] { "REALITYPublicKey", "REALITYFingerprint", "REALITYShortId", "REALITYSpiderX" };
 
-        foreach (var controlName in realityControls)
+        foreach (var baseName in realityFieldBaseNames)
         {
-            var control = ConfigurationGroupBox.Controls.Find(controlName, true).FirstOrDefault();
-            if (control != null)
+            // All REALITY input controls are TextBoxes now
+            string inputControlName = baseName + "TextBox";
+            string labelName = baseName + "Label";
+
+            var inputControl = ConfigurationGroupBox.Controls.Find(inputControlName, true).FirstOrDefault();
+            var labelControl = ConfigurationGroupBox.Controls.Find(labelName, true).FirstOrDefault();
+
+            if (inputControl != null)
             {
-                control.Visible = isReality;
+                inputControl.Visible = isReality;
             }
-        }
 
-        foreach (var labelName in realityLabels)
-        {
-            var label = ConfigurationGroupBox.Controls.Find(labelName, true).FirstOrDefault();
-            if (label != null)
+            if (labelControl != null)
             {
-                label.Visible = isReality;
+                labelControl.Visible = isReality;
             }
         }
     }
