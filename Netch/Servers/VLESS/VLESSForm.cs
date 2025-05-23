@@ -53,4 +53,34 @@ internal class VLESSForm : ServerForm
     }
 
     protected override string TypeName { get; } = "VLESS";
+
+    private void OnTLSSecureChanged(object? sender, EventArgs e)
+    {
+        var tlsSecureComboBox = ConfigurationGroupBox.Controls.Find("TLSSecureComboBox", true).FirstOrDefault() as ComboBox;
+        if (tlsSecureComboBox == null) return;
+
+        var selectedSecureType = tlsSecureComboBox.SelectedItem?.ToString() ?? string.Empty;
+        bool isReality = selectedSecureType == "reality";
+
+        var realityControls = new[] { "REALITYFingerprintComboBox", "REALITYPublicKeyTextBox", "REALITYShortIdTextBox", "REALITYSpiderXTextBox" };
+        var realityLabels = new[] { "REALITYFingerprintLabel", "REALITYPublicKeyLabel", "REALITYShortIdLabel", "REALITYSpiderXLabel" };
+
+        foreach (var controlName in realityControls)
+        {
+            var control = ConfigurationGroupBox.Controls.Find(controlName, true).FirstOrDefault();
+            if (control != null)
+            {
+                control.Visible = isReality;
+            }
+        }
+
+        foreach (var labelName in realityLabels)
+        {
+            var label = ConfigurationGroupBox.Controls.Find(labelName, true).FirstOrDefault();
+            if (label != null)
+            {
+                label.Visible = isReality;
+            }
+        }
+    }
 }
