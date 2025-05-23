@@ -84,7 +84,8 @@ public static class V2rayConfigUtils
                             new User
                             {
                                 id = getUUID(vless.UserID),
-                                flow = vless.TLSSecureType == "xtls" ? "xtls-rprx-direct" : "",
+                                flow = vless.TLSSecureType == "reality" ? "xtls-rprx-vision" :
+                                       vless.TLSSecureType == "xtls" ? "xtls-rprx-direct" : null,
                                 encryption = vless.EncryptMethod
                             }
                         }
@@ -127,7 +128,7 @@ public static class V2rayConfigUtils
                             new User
                             {
                                 id = getUUID(vmess.UserID),
-                                alterId = vmess.AlterID,
+                                alterId = null, // Changed to null
                                 security = vmess.EncryptMethod
                             }
                         }

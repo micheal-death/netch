@@ -14,7 +14,7 @@ public class User
 {
     public string id { get; set; }
 
-    public int alterId { get; set; }
+    public int? alterId { get; set; }
 
     public string security { get; set; }
 
