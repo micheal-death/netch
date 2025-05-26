@@ -55,6 +55,8 @@ internal class VLESSForm : ServerForm
         }
     }
 
+    protected override string TypeName { get; } = "VLESS";
+
     private void OnTLSSecureChanged(object? sender, EventArgs e)
     {
         var tlsSecureComboBox = ConfigurationGroupBox.Controls.Find("TLSSecureComboBox", true).FirstOrDefault() as ComboBox;
