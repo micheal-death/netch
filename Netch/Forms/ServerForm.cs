@@ -23,7 +23,7 @@ public abstract class ServerForm : Form
 
     private readonly IContainer components = null;
 
-    private GroupBox ConfigurationGroupBox;
+    protected GroupBox ConfigurationGroupBox;
     private Label PortLabel;
     private TextBox PortTextBox;
     private Label RemarkLabel;

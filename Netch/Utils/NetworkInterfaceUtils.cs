@@ -70,16 +70,18 @@ public static class NetworkInterfaceExtension
 
     public static void SetDns(this NetworkInterface ni, string primaryDns, string? secondDns = null)
     {
-        void VerifyDns(ref string s)
+        string VerifyDns(string s, string parameterName)
         {
             s = s.Trim();
-            if (primaryDns.IsNullOrEmpty())
-                throw new ArgumentException("DNS format invalid", nameof(primaryDns));
+            if (s.IsNullOrEmpty())
+                throw new ArgumentException("DNS format invalid", parameterName);
+
+            return s;
         }
 
-        VerifyDns(ref primaryDns);
+        primaryDns = VerifyDns(primaryDns, nameof(primaryDns));
         if (secondDns != null)
-            VerifyDns(ref primaryDns);
+            secondDns = VerifyDns(secondDns, nameof(secondDns));
 
         var wmi = new ManagementClass("Win32_NetworkAdapterConfiguration");
         var mos = wmi.GetInstances().Cast<ManagementObject>();
@@ -93,6 +95,6 @@ public static class NetworkInterfaceExtension
         var inPar = mo.GetMethodParameters("SetDNSServerSearchOrder");
         inPar["DNSServerSearchOrder"] = dns;
 
-        mo.InvokeMethod("SetDNSServerSearchOrder", inPar, null);
+        mo.InvokeMethod("SetDNSServerSearchOrder", inPar, null!);
     }
 }

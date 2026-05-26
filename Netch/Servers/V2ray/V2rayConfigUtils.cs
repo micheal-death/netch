@@ -84,7 +84,8 @@ public static class V2rayConfigUtils
                             new User
                             {
                                 id = getUUID(vless.UserID),
-                                flow = vless.TLSSecureType == "xtls" ? "xtls-rprx-direct" : "",
+                                flow = vless.TLSSecureType == "reality" ? "xtls-rprx-vision" :
+                                       vless.TLSSecureType == "xtls" ? "xtls-rprx-direct" : null,
                                 encryption = vless.EncryptMethod
                             }
                         }
@@ -96,7 +97,7 @@ public static class V2rayConfigUtils
 
                 outbound.streamSettings = boundStreamSettings(vless);
 
-                if (vless.TLSSecureType == "xtls")
+                if (vless.TLSSecureType is "xtls" or "reality")
                 {
                     outbound.mux.enabled = false;
                     outbound.mux.concurrency = -1;
@@ -304,7 +305,29 @@ public static class V2rayConfigUtils
             security = server.TLSSecureType
         };
 
-        if (server.TLSSecureType != "none")
+        if (server is VLESSServer vlessServer && vlessServer.TLSSecureType == "reality")
+        {
+            if (string.IsNullOrWhiteSpace(vlessServer.REALITYPublicKey))
+            {
+                throw new MessageException("REALITY public key is required.");
+            }
+
+            if (!IsValidRealityShortId(vlessServer.REALITYShortId))
+            {
+                throw new MessageException("REALITY short ID must be an even-length hex string.");
+            }
+
+            streamSettings.security = "reality";
+            streamSettings.realitySettings = new RealitySettings
+            {
+                serverName = GetRealityServerName(vlessServer),
+                fingerprint = vlessServer.REALITYFingerprint.ValueOrDefault("chrome") ?? "chrome",
+                publicKey = vlessServer.REALITYPublicKey,
+                shortId = vlessServer.REALITYShortId.ValueOrDefault(),
+                spiderX = vlessServer.REALITYSpiderX.ValueOrDefault()
+            };
+        }
+        else if (server.TLSSecureType == "tls" || server.TLSSecureType == "xtls")
         {
             var tlsSettings = new TlsSettings
             {
@@ -312,14 +335,13 @@ public static class V2rayConfigUtils
                 serverName = server.ServerName.ValueOrDefault() ?? server.Host.SplitOrDefault()?[0]
             };
 
-            switch (server.TLSSecureType)
+            if (server.TLSSecureType == "tls")
             {
-                case "tls":
-                    streamSettings.tlsSettings = tlsSettings;
-                    break;
-                case "xtls":
-                    streamSettings.xtlsSettings = tlsSettings;
-                    break;
+                streamSettings.tlsSettings = tlsSettings;
+            }
+            else // Must be "xtls"
+            {
+                streamSettings.xtlsSettings = tlsSettings;
             }
         }
 
@@ -433,5 +455,18 @@ public static class V2rayConfigUtils
             return uuid;
         }
         return uuid.GenerateUUIDv5();
+    }
+
+    private static string GetRealityServerName(VLESSServer server)
+    {
+        return server.ServerName.ValueOrDefault()
+            ?? server.Host.SplitOrDefault()?[0]
+            ?? server.Hostname.ValueOrDefault()
+            ?? throw new MessageException("REALITY server name is required.");
+    }
+
+    private static bool IsValidRealityShortId(string? shortId)
+    {
+        return string.IsNullOrWhiteSpace(shortId) || shortId.Length % 2 == 0 && shortId.All(Uri.IsHexDigit);
     }
 }

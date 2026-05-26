@@ -1,6 +1,15 @@
 Push-Location (Split-Path $MyInvocation.MyCommand.Path -Parent)
 
-.\clean.ps1
+& .\clean.ps1
+if ( -Not $? -or $LASTEXITCODE -ne 0 ) {
+    if ( $LASTEXITCODE -ne 0 ) {
+        exit $LASTEXITCODE
+    }
+
+    exit 1
+}
+
+New-Item -ItemType Directory -Force -Path '.\release' | Out-Null
 
 Set-Location (Split-Path $MyInvocation.MyCommand.Path -Parent)
 Get-ChildItem -Path '.' -Directory | ForEach-Object {

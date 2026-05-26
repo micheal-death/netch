@@ -14,7 +14,7 @@ public class User
 {
     public string id { get; set; }
 
-    public int alterId { get; set; }
+    public int? alterId { get; set; }
 
     public string security { get; set; }
 
@@ -29,9 +29,9 @@ public class Outbound
 
     public OutboundConfiguration settings { get; set; }
 
-    public StreamSettings? streamSettings { get; set; }
+    public StreamSettings streamSettings { get; set; }
 
-    public Mux? mux { get; set; }
+    public Mux mux { get; set; }
 }
 
 public class OutboundConfiguration
@@ -109,6 +109,7 @@ public class StreamSettings
     public string security { get; set; }
 
     public TlsSettings tlsSettings { get; set; }
+    public RealitySettings realitySettings { get; set; }
 
     public TcpSettings tcpSettings { get; set; }
 
@@ -134,6 +135,15 @@ public class TlsSettings
     public bool allowInsecure { get; set; }
 
     public string serverName { get; set; }
+}
+
+public class RealitySettings
+{
+    public string serverName { get; set; }
+    public string fingerprint { get; set; }
+    public string publicKey { get; set; }
+    public string shortId { get; set; }
+    public string spiderX { get; set; }
 }
 
 public class TcpSettings

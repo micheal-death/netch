@@ -18,6 +18,11 @@ public class VLESSServer : VMessServer
     ///     伪装类型
     /// </summary>
     public override string FakeType { get; set; } = VLESSGlobal.FakeTypes[0];
+
+    public string? REALITYFingerprint { get; set; }
+    public string? REALITYPublicKey { get; set; }
+    public string? REALITYShortId { get; set; }
+    public string? REALITYSpiderX { get; set; }
 }
 
 public class VLESSGlobal
@@ -26,7 +31,8 @@ public class VLESSGlobal
     {
         "none",
         "tls",
-        "xtls"
+        "xtls",
+        "reality"
     };
 
     public static List<string> FakeTypes => VMessGlobal.FakeTypes;

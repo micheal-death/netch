@@ -1,8 +1,20 @@
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using Microsoft.VisualStudio.Threading;
 
 namespace Netch.Utils;
+
+public sealed class WebRequestOptions
+{
+    public string Url { get; init; } = string.Empty;
+
+    public int Timeout { get; init; }
+
+    public string UserAgent { get; set; } = WebUtil.DefaultUserAgent;
+
+    public IWebProxy? Proxy { get; set; }
+}
 
 public static class WebUtil
 {
@@ -16,25 +28,26 @@ public static class WebUtil
 
     private static int DefaultGetTimeout => Global.Settings.RequestTimeout;
 
-    public static HttpWebRequest CreateRequest(string url, int? timeout = null, string? userAgent = null)
+    public static WebRequestOptions CreateRequest(string url, int? timeout = null, string? userAgent = null)
     {
-        var req = (HttpWebRequest)WebRequest.Create(url);
-        req.UserAgent = string.IsNullOrWhiteSpace(userAgent) ? DefaultUserAgent : userAgent;
-        req.Accept = "*/*";
-        req.KeepAlive = true;
-        req.Timeout = timeout ?? DefaultGetTimeout;
-        req.ReadWriteTimeout = timeout ?? DefaultGetTimeout;
-        req.Headers.Add("Accept-Charset", "utf-8");
-        return req;
+        return new WebRequestOptions
+        {
+            Url = url,
+            UserAgent = string.IsNullOrWhiteSpace(userAgent) ? DefaultUserAgent : userAgent,
+            Timeout = timeout ?? DefaultGetTimeout
+        };
     }
 
-    public static async Task<byte[]> DownloadBytesAsync(HttpWebRequest req)
+    public static async Task<byte[]> DownloadBytesAsync(WebRequestOptions req)
     {
-        using var webResponse = await req.GetResponseAsync();
+        using var httpClient = CreateHttpClient(req);
+        using var requestMessage = CreateRequestMessage(req);
+        using var webResponse = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead);
+        webResponse.EnsureSuccessStatusCode();
         var memoryStream = new MemoryStream();
         await using (memoryStream)
         {
-            var input = webResponse.GetResponseStream();
+            var input = await webResponse.Content.ReadAsStreamAsync();
             await using (input)
             {
                 await input.CopyToAsync(memoryStream);
@@ -43,12 +56,14 @@ public static class WebUtil
         }
     }
 
-    public static async Task<(HttpStatusCode, string)> DownloadStringAsync(HttpWebRequest req, Encoding? encoding = null)
+    public static async Task<(HttpStatusCode, string)> DownloadStringAsync(WebRequestOptions req, Encoding? encoding = null)
     {
         encoding ??= Encoding.UTF8;
-        using var webResponse = (HttpWebResponse)await req.GetResponseAsync();
+        using var httpClient = CreateHttpClient(req);
+        using var requestMessage = CreateRequestMessage(req);
+        using var webResponse = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead);
 
-        var responseStream = webResponse.GetResponseStream();
+        var responseStream = await webResponse.Content.ReadAsStreamAsync();
         await using (responseStream)
         {
             using var streamReader = new StreamReader(responseStream, encoding);
@@ -62,18 +77,21 @@ public static class WebUtil
         return DownloadFileAsync(CreateRequest(address), fileFullPath, progress);
     }
 
-    public static async Task DownloadFileAsync(HttpWebRequest req, string fileFullPath, IProgress<int>? progress)
+    public static async Task DownloadFileAsync(WebRequestOptions req, string fileFullPath, IProgress<int>? progress)
     {
         var fileStream = new FileStream(fileFullPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
         await using (fileStream)
         {
-            using var webResponse = (HttpWebResponse)await req.GetResponseAsync();
-            var input = webResponse.GetResponseStream();
+            using var httpClient = CreateHttpClient(req);
+            using var requestMessage = CreateRequestMessage(req);
+            using var webResponse = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead);
+            webResponse.EnsureSuccessStatusCode();
+            var input = await webResponse.Content.ReadAsStreamAsync();
             await using (input)
             {
-                using var downloadTask = input.CopyToAsync(fileStream);
+                var downloadTask = input.CopyToAsync(fileStream);
                 if (progress != null)
-                    ReportProgressAsync(webResponse.ContentLength, downloadTask, fileStream, progress, 200).Forget();
+                    ReportProgressAsync(webResponse.Content.Headers.ContentLength ?? -1, downloadTask, fileStream, progress, 200).Forget();
 
                 await downloadTask;
             }
@@ -82,8 +100,37 @@ public static class WebUtil
         progress?.Report(100);
     }
 
-    private static async Task ReportProgressAsync(long total, IAsyncResult downloadTask, Stream stream, IProgress<int> progress, int interval)
+    private static HttpClient CreateHttpClient(WebRequestOptions req)
     {
+        var handler = new HttpClientHandler();
+        if (req.Proxy != null)
+        {
+            handler.Proxy = req.Proxy;
+            handler.UseProxy = true;
+        }
+
+        return new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromMilliseconds(req.Timeout)
+        };
+    }
+
+    private static HttpRequestMessage CreateRequestMessage(WebRequestOptions req)
+    {
+        var requestMessage = new HttpRequestMessage(HttpMethod.Get, req.Url);
+        requestMessage.Headers.TryAddWithoutValidation("User-Agent", req.UserAgent);
+        requestMessage.Headers.TryAddWithoutValidation("Accept", "*/*");
+        requestMessage.Headers.TryAddWithoutValidation("Accept-Charset", "utf-8");
+        return requestMessage;
+    }
+
+    private static async Task ReportProgressAsync(long total, Task downloadTask, Stream stream, IProgress<int> progress, int interval)
+    {
+        if (total <= 0)
+        {
+            return;
+        }
+
         var n = 0;
         while (!downloadTask.IsCompleted)
         {
