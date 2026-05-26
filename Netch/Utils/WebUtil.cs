@@ -43,6 +43,7 @@ public static class WebUtil
         using var httpClient = CreateHttpClient(req);
         using var requestMessage = CreateRequestMessage(req);
         using var webResponse = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead);
+        webResponse.EnsureSuccessStatusCode();
         var memoryStream = new MemoryStream();
         await using (memoryStream)
         {
@@ -84,10 +85,11 @@ public static class WebUtil
             using var httpClient = CreateHttpClient(req);
             using var requestMessage = CreateRequestMessage(req);
             using var webResponse = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead);
+            webResponse.EnsureSuccessStatusCode();
             var input = await webResponse.Content.ReadAsStreamAsync();
             await using (input)
             {
-                using var downloadTask = input.CopyToAsync(fileStream);
+                var downloadTask = input.CopyToAsync(fileStream);
                 if (progress != null)
                     ReportProgressAsync(webResponse.Content.Headers.ContentLength ?? -1, downloadTask, fileStream, progress, 200).Forget();
 

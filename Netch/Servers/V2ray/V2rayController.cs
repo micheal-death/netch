@@ -8,7 +8,9 @@ namespace Netch.Servers;
 
 public class V2rayController : Guard, IServerController
 {
-    public V2rayController() : base(Global.Settings.V2RayConfig.XrayExecutableName)
+    public V2rayController() : base(string.IsNullOrWhiteSpace(Global.Settings.V2RayConfig.XrayExecutableName)
+        ? "xray.exe"
+        : Global.Settings.V2RayConfig.XrayExecutableName.Trim())
     {
         //if (!Global.Settings.V2RayConfig.XrayCone)
         //    Instance.StartInfo.Environment["XRAY_CONE_DISABLED"] = "true";
