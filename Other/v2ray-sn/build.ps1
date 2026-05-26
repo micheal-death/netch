@@ -1,29 +1,70 @@
+param (
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [string]
+    $XrayRef = 'v26.3.27',
+
+    [Parameter()]
+    [string]
+    $GoProxy = $Env:GOPROXY
+)
+
 Set-Location (Split-Path $MyInvocation.MyCommand.Path -Parent)
 
-git clone https://github.com/SagerNet/v2ray-core.git -b 'v5.0.16' src
-if ( -Not $? ) {
-    exit $lastExitCode
+New-Item -ItemType Directory -Force -Path '..\release' | Out-Null
+$refMarker = 'src\.xray-ref'
+
+$goCommand = Get-Command go -ErrorAction SilentlyContinue
+if ( -Not $goCommand ) {
+    $defaultGo = 'C:\Program Files\Go\bin\go.exe'
+    if ( Test-Path $defaultGo ) {
+        $Env:Path = "$(Split-Path $defaultGo -Parent);$Env:Path"
+    }
+    else {
+        Write-Error 'Go toolchain was not found in PATH. Install Go or add go.exe to PATH, then rerun this script.'
+        exit 1
+    }
+}
+
+if ( Test-Path 'src' ) {
+    if ( -Not ( Test-Path 'src\.git' ) ) {
+        Write-Error 'The src directory already exists but is not a git checkout. Remove Other\v2ray-sn\src or run Other\build.ps1 for a clean rebuild.'
+        exit 1
+    }
+
+    $currentRef = if ( Test-Path $refMarker ) { (Get-Content $refMarker -Raw).Trim() } else { '' }
+    if ( $currentRef -ne $XrayRef ) {
+        Write-Host "Refreshing Xray-core source for $XrayRef"
+        Remove-Item -Recurse -Force 'src'
+    }
+    else {
+        Write-Host 'Using existing Xray-core source in Other\v2ray-sn\src'
+    }
+}
+
+if ( -Not ( Test-Path 'src' ) ) {
+    git clone https://github.com/XTLS/Xray-core.git --branch $XrayRef --single-branch --depth 1 src
+    if ( -Not $? ) {
+        exit $lastExitCode
+    }
+
+    Set-Content -Path $refMarker -Value $XrayRef
 }
 Set-Location src
-
-# Download SSR plugin
-Invoke-WebRequest -Uri 'https://gist.githubusercontent.com/H1JK/b3165a99b635dcc06101690e4c43b5fd/raw/691b471f3b395a949d03a3d064d93d319d4997b7/ssr.go' -OutFile '.\proxy\shadowsocks\plugin\self\ssr.go'
-
-# Download Simple-Obfs plugin
-Invoke-WebRequest -Uri 'https://gist.githubusercontent.com/H1JK/b3165a99b635dcc06101690e4c43b5fd/raw/691b471f3b395a949d03a3d064d93d319d4997b7/obfs.go' -OutFile '.\proxy\shadowsocks\plugin\self\obfs.go'
-
-# Enable ReadV (Use old ReadV code)
-Remove-Item '.\common\buf\io.go'
-Remove-Item '.\common\buf\readv_reader.go'
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/SagerNet/v2ray-core/2711fd1/common/buf/io.go' -OutFile '.\common\buf\io.go'
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/SagerNet/v2ray-core/2711fd1/common/buf/readv_reader.go' -OutFile '.\common\buf\readv_reader.go'
 
 $Env:CGO_ENABLED='0'
 $Env:GOROOT_FINAL='/usr'
 
 $Env:GOOS='windows'
 $Env:GOARCH='amd64'
-go get -u ./...
-go mod tidy
-go build -a -trimpath -asmflags '-s -w' -ldflags '-s -w -buildid=' -o '..\..\release\v2ray-sn.exe' '.\main'
+if ( -Not [string]::IsNullOrWhiteSpace($GoProxy) ) {
+    $Env:GOPROXY = $GoProxy
+}
+
+go mod download
+if ( -Not $? ) {
+    exit $lastExitCode
+}
+
+go build -o '..\..\release\xray.exe' -trimpath -buildvcs=false -ldflags '-s -w -buildid=' '.\main'
 exit $lastExitCode

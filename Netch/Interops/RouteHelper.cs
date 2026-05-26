@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using Windows.Win32.Foundation;
 using Windows.Win32.Networking.WinSock;
 using Windows.Win32.NetworkManagement.IpHelper;
@@ -7,6 +8,7 @@ using static Windows.Win32.PInvoke;
 
 namespace Netch.Interops;
 
+[SupportedOSPlatform("windows8.1")]
 public static unsafe class RouteHelper
 {
     [DllImport("RouteHelper.bin", CallingConvention = CallingConvention.Cdecl)]

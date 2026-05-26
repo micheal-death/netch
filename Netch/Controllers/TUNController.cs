@@ -45,7 +45,7 @@ namespace Netch.Controllers
                 _serverRemoteAddress = null;
 
             _outbound = NetRoute.GetBestRouteTemplate();
-            CheckDriver();
+            await CheckDriverAsync();
 
             // Wait for adapter to be created
             for (var i = 0; i < 20; i++)
@@ -129,13 +129,17 @@ namespace Netch.Controllers
             await Task.WhenAll(tasks);
         }
 
-        private void CheckDriver()
+        private static async Task CheckDriverAsync()
         {
             string binDriver = Path.Combine(Global.NetchDir, Constants.WintunDllFile);
             string sysDriver = $@"{Environment.SystemDirectory}\wintun.dll";
 
-            var binHash = Utils.Utils.Sha256CheckSumAsync(binDriver).Result;
-            var sysHash = Utils.Utils.Sha256CheckSumAsync(sysDriver).Result;
+            var binHashTask = Utils.Utils.Sha256CheckSumAsync(binDriver);
+            var sysHashTask = Utils.Utils.Sha256CheckSumAsync(sysDriver);
+            await Task.WhenAll(binHashTask, sysHashTask);
+
+            var binHash = await binHashTask;
+            var sysHash = await sysHashTask;
             Log.Information("Built-in  wintun.dll Hash: {Hash}", binHash);
             Log.Information("Installed wintun.dll Hash: {Hash}", sysHash);
             if (binHash == sysHash)

@@ -97,7 +97,7 @@ public static class V2rayConfigUtils
 
                 outbound.streamSettings = boundStreamSettings(vless);
 
-                if (vless.TLSSecureType == "xtls")
+                if (vless.TLSSecureType is "xtls" or "reality")
                 {
                     outbound.mux.enabled = false;
                     outbound.mux.concurrency = -1;
@@ -128,7 +128,7 @@ public static class V2rayConfigUtils
                             new User
                             {
                                 id = getUUID(vmess.UserID),
-                                alterId = null, // Changed to null
+                                alterId = vmess.AlterID,
                                 security = vmess.EncryptMethod
                             }
                         }
@@ -302,28 +302,33 @@ public static class V2rayConfigUtils
         var streamSettings = new StreamSettings
         {
             network = server.TransferProtocol,
-            security = server.TLSSecureType // Initial assignment
+            security = server.TLSSecureType
         };
 
         if (server is VLESSServer vlessServer && vlessServer.TLSSecureType == "reality")
         {
-            streamSettings.security = "reality"; // Override security to "reality"
-            if (!string.IsNullOrEmpty(vlessServer.REALITYPublicKey)) // Only proceed if PublicKey is set
+            if (string.IsNullOrWhiteSpace(vlessServer.REALITYPublicKey))
             {
-                streamSettings.realitySettings = new RealitySettings
-                {
-                    serverName = vlessServer.ServerName.ValueOrDefault() ?? vlessServer.Host.SplitOrDefault()?[0],
-                    fingerprint = vlessServer.REALITYFingerprint,
-                    publicKey = vlessServer.REALITYPublicKey,
-                    shortId = vlessServer.REALITYShortId,
-                    spiderX = vlessServer.REALITYSpiderX
-                };
+                throw new MessageException("REALITY public key is required.");
             }
-            // When security is "reality", tlsSettings and xtlsSettings should be null.
+
+            if (!IsValidRealityShortId(vlessServer.REALITYShortId))
+            {
+                throw new MessageException("REALITY short ID must be an even-length hex string.");
+            }
+
+            streamSettings.security = "reality";
+            streamSettings.realitySettings = new RealitySettings
+            {
+                serverName = GetRealityServerName(vlessServer),
+                fingerprint = vlessServer.REALITYFingerprint.ValueOrDefault("chrome") ?? "chrome",
+                publicKey = vlessServer.REALITYPublicKey,
+                shortId = vlessServer.REALITYShortId.ValueOrDefault(),
+                spiderX = vlessServer.REALITYSpiderX.ValueOrDefault()
+            };
         }
-        else if (server.TLSSecureType == "tls" || server.TLSSecureType == "xtls") // Process only "tls" or "xtls"
+        else if (server.TLSSecureType == "tls" || server.TLSSecureType == "xtls")
         {
-            // This is the existing block for tls/xtls
             var tlsSettings = new TlsSettings
             {
                 allowInsecure = Global.Settings.V2RayConfig.AllowInsecure,
@@ -339,7 +344,6 @@ public static class V2rayConfigUtils
                 streamSettings.xtlsSettings = tlsSettings;
             }
         }
-        // The case for "none" TLSSecureType implicitly means no tlsSettings, xtlsSettings, or realitySettings, which is correct.
 
         switch (server.TransferProtocol)
         {
@@ -451,5 +455,18 @@ public static class V2rayConfigUtils
             return uuid;
         }
         return uuid.GenerateUUIDv5();
+    }
+
+    private static string GetRealityServerName(VLESSServer server)
+    {
+        return server.ServerName.ValueOrDefault()
+            ?? server.Host.SplitOrDefault()?[0]
+            ?? server.Hostname.ValueOrDefault()
+            ?? throw new MessageException("REALITY server name is required.");
+    }
+
+    private static bool IsValidRealityShortId(string? shortId)
+    {
+        return string.IsNullOrWhiteSpace(shortId) || shortId.Length % 2 == 0 && shortId.All(Uri.IsHexDigit);
     }
 }

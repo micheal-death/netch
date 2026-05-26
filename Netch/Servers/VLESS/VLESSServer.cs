@@ -31,8 +31,8 @@ public class VLESSGlobal
     {
         "none",
         "tls",
-    "xtls",
-    "reality" // Added
+        "xtls",
+        "reality"
     };
 
     public static List<string> FakeTypes => VMessGlobal.FakeTypes;

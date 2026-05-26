@@ -56,6 +56,14 @@ public static class V2rayUtils
             {
                 server.ServerName = parameter.Get("sni") ?? "";
             }
+
+            if (server is VLESSServer vlessServer && server.TLSSecureType == "reality")
+            {
+                vlessServer.REALITYFingerprint = parameter.Get("fp") ?? "chrome";
+                vlessServer.REALITYPublicKey = parameter.Get("pbk") ?? parameter.Get("publicKey") ?? parameter.Get("password");
+                vlessServer.REALITYShortId = parameter.Get("sid");
+                vlessServer.REALITYSpiderX = Uri.UnescapeDataString(parameter.Get("spx") ?? "");
+            }
         }
 
         var finder = new Regex(@$"^{scheme}://(?<guid>.+?)@(?<server>.+):(?<port>\d+)");
@@ -130,10 +138,24 @@ public static class V2rayUtils
         {
             parameter.Add("security", server.TLSSecureType);
 
-            if (!server.Host.IsNullOrWhiteSpace())
-                parameter.Add("sni", server.Host!);
+            if (!server.ServerName.IsNullOrWhiteSpace())
+                parameter.Add("sni", Uri.EscapeDataString(server.ServerName!));
 
-            if (server.TLSSecureType == "xtls")
+            if (server is VLESSServer vlessServer && server.TLSSecureType == "reality")
+            {
+                parameter.Add("flow", "xtls-rprx-vision");
+                parameter.Add("fp", vlessServer.REALITYFingerprint.ValueOrDefault("chrome") ?? "chrome");
+
+                if (!vlessServer.REALITYPublicKey.IsNullOrWhiteSpace())
+                    parameter.Add("pbk", Uri.EscapeDataString(vlessServer.REALITYPublicKey!));
+
+                if (!vlessServer.REALITYShortId.IsNullOrWhiteSpace())
+                    parameter.Add("sid", vlessServer.REALITYShortId!);
+
+                if (!vlessServer.REALITYSpiderX.IsNullOrWhiteSpace())
+                    parameter.Add("spx", Uri.EscapeDataString(vlessServer.REALITYSpiderX!));
+            }
+            else if (server.TLSSecureType == "xtls")
             {
                 parameter.Add("flow", "xtls-rprx-direct");
             }

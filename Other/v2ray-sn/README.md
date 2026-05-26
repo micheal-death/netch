@@ -1,56 +1,20 @@
-# Project V for SagerNet for Netch
-This is not a joke.  
-Modified from [SagerNet/v2ray-core](https://github.com/SagerNet/v2ray-core).  
-#### Extends all features of SagerNet/v2ray-core
+# Xray-core for Netch
 
-### Changes
+Builds [XTLS/Xray-core](https://github.com/XTLS/Xray-core) as `xray.exe` for Netch.
 
-- embed ShadowsocksR plugin for shadowsocks
+The build script pins a reproducible Xray release by default and accepts `-XrayRef`
+when a different tag or branch is needed.
 
-```json
-{
-  "outbounds": [
-    {
-      "protocol": "shadowsocks",
-      "settings": {
-        ...
-        "plugin": "shadowsocksr",
-        "pluginArgs": [
-          "--obfs=<OBFS_TYPE>",
-          "--obfs-param=<OBFS_PARAMETERS>",
-          "--protocol=<PROTOCOL_TYPE>",
-          "--protocol-param=<PROTOCOL_PARAMETERS>"
-        ]
-      }
-    }
-  ]
-}
+```powershell
+.\build.ps1
+.\build.ps1 -XrayRef v26.3.27
+.\build.ps1 -GoProxy https://goproxy.cn,direct
 ```
 
-- embed simple-obfs plugin for shadowsocks
+The output is written to `Other\release\xray.exe`; the top-level build script then
+copies it into `release\bin`.
 
-```json
-{
-  "outbounds": [
-    {
-      "protocol": "shadowsocks",
-      "settings": {
-        ...
-        "plugin": "obfs-local",
-        "pluginOpts": "<SIMPLE_OBFS_OPTIONS>"
-      }
-    }
-  ]
-}
-```
-
-- Re-enable ReadV
-
-### License
-
-GPL v3
-
-### Credits
-
-This repo relies on the following projects:  
-- [SagerNet/LibSagerNetCore](https://github.com/SagerNet/LibSagerNetCore)
+If the requested `-XrayRef` changes, the script refreshes `src` automatically.
+If a previous run cloned `src` but failed before producing `xray.exe`, rerun this
+script after installing Go. To force a fresh clone manually, run `..\clean.ps1`
+from this directory or delete `Other\v2ray-sn\src`.
